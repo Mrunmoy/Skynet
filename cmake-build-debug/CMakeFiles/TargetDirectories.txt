@@ -1,0 +1,3 @@
+C:/Users/championsurfer3044/CLionProjects/skynet/cmake-build-debug/CMakeFiles/skynet.dir
+C:/Users/championsurfer3044/CLionProjects/skynet/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/championsurfer3044/CLionProjects/skynet/cmake-build-debug/CMakeFiles/rebuild_cache.dir
