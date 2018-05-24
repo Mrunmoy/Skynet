@@ -3,31 +3,43 @@
 #include <string.h>
 #include <stdbool.h>
 
-typedef struct node_t
-{
+typedef enum path_t {
+    PATH_None = 0,
+    PATH_Curr,
+    PATH_Left,
+    PATH_Right
+}path_t;
+
+typedef struct node_t {
     int index;
     int left;//struct node_t *pLeft;
     int right; //struct node_t *pRight;
 }node_t;
 
-
-
-static bool has_valid_path(const node_t * pSrc, const node_t *pDst)
+static path_t has_valid_path_recursive(const node_t * pArray, int src_i, int dst_i)
 {
-    return ( (pSrc->left == pDst->index) || (pSrc->right == pDst->index) ) ;
-}
-
-static bool has_valid_path_recursive(const node_t * pArray, int src_i, int dst_i)
-{
-    if (src_i == -1) {
-        return false;
+    fprintf(stderr," Trying path from %d to %d\n", src_i, dst_i);
+    path_t result = PATH_None;
+    if ( (src_i == -1) ) {
+        result = PATH_None;
+    }
+    else if (pArray[src_i].index == dst_i) {
+        result = PATH_Curr;
+    }
+    else {
+        result = has_valid_path_recursive(pArray, pArray[src_i].left, dst_i);
+        if (PATH_None != result) {
+            result = PATH_Left;
+        }
+        else {
+            result = has_valid_path_recursive(pArray, pArray[src_i].right, dst_i);
+            if (PATH_None != result) {
+                result = PATH_Right;
+            }
+        }
     }
 
-    if (pArray[src_i].index == dst_i) {
-        return true;
-    }
-
-    return has_valid_path_recursive(pArray, pArray[src_i].left, dst_i)  || has_valid_path_recursive(pArray, pArray[src_i].right, dst_i);
+    return result;
 }
 
 /**
@@ -43,11 +55,12 @@ int main()
     fprintf(stderr,"%d%d%d\n", N, L, E);
 
     // allocate game board
-    node_t *board = (node_t *)malloc(sizeof(node_t));
+    node_t *board = (node_t *)malloc(N * sizeof(node_t));
     for (int i = 0; i < N; i++) {
         board[i].index = i;
         board[i].left = board[i].right = -1;
     }
+
     int arr[2][2] = { {1,2}, {1,0} };
     for (int i = 0; i < L; i++) {
         int N1 = arr[i][0]; // N1 and N2 defines a link between these nodes
@@ -80,7 +93,7 @@ int main()
     fprintf(stderr,"\n");
 
     // game loop
-    do {
+    {
         int SI = 1; // The index of the node on which the Skynet agent is positioned this turn
         //scanf("%d", &SI);
         fprintf(stderr,"Skynet Agent at: %d\n", SI);
@@ -92,97 +105,56 @@ int main()
             int index_of_exit = exit_nodes[ea];
             bool done = false;
             // look left, right
-            if (has_valid_path(&board[index_of_exit], &board[SI]))
-            {   // sever this link
+            path_t result = has_valid_path_recursive(board, index_of_exit, SI);
+            if (PATH_None != result)
+            {   // sever this link's path
                 done = true;
-                if (board[index_of_exit].left == board[SI].index)
+                if (PATH_Left == result)
                 { //sever left link
+                    fprintf(stderr,"Valid Left path from %d to %d\n", index_of_exit, SI);
+                    if (board[index_of_exit].index < board[index_of_exit].left) {
+                        printf("%d %d\n", board[index_of_exit].index, board[index_of_exit].left);
+                    }
+                    else {
+                        printf("%d %d\n", board[index_of_exit].left, board[index_of_exit].index);
+                    }
+
+                    if (board[index_of_exit].index == board[board[index_of_exit].left].left) { //sever left link
+                        board[board[index_of_exit].left].left = -1;
+                    }
+                    else if (board[index_of_exit].index == board[board[index_of_exit].left].right) { //sever right link
+                        board[board[index_of_exit].left].right = -1;
+                    }
                     board[index_of_exit].left = -1;
                 }
-                else if (board[index_of_exit].right == board[SI].index)
+                else if (PATH_Right == result)
                 { //sever right link
+                    fprintf(stderr,"Valid Right path from %d to %d\n", index_of_exit, SI);
+                    if (board[index_of_exit].index < board[index_of_exit].right) {
+                        printf("%d %d\n", board[index_of_exit].index, board[index_of_exit].right);
+                    }
+                    else {
+                        printf("%d %d\n", board[index_of_exit].right, board[index_of_exit].index);
+                    }
+
+                    if (board[index_of_exit].index == board[board[index_of_exit].right].left)
+                    { //sever left link
+                        board[board[index_of_exit].right].left = -1;
+                    }
+                    else if (board[index_of_exit].index == board[board[index_of_exit].right].right)
+                    { //sever right link
+                        board[board[index_of_exit].right].right = -1;
+                    }
                     board[index_of_exit].right = -1;
                 }
-                if (board[index_of_exit].index == board[SI].left)
-                { //sever left link
-                    board[SI].left = -1;
+                else {
+                    fprintf(stderr,"No path from %d to %d\n", index_of_exit, SI);
                 }
-                else if (board[index_of_exit].index == board[SI].right)
-                { //sever right link
-                    board[SI].right = -1;
-                }
-            }
-
-            int iter = 0;
-            while (!done)
-            { // look next level
-                if (iter >= N)
-                {
-                    done = true;
-                    break;
-                }
-
-                if (SI != iter)
-                {
-                    if (board[index_of_exit].left >= 0)
-                    {
-                        index_of_exit = board[index_of_exit].left;
-                        if (has_valid_path(&board[index_of_exit], &board[SI]))
-                        {   // sever this link
-                            done = true;
-                            if (board[index_of_exit].left == board[SI].index)
-                            { //sever left link
-                                board[index_of_exit].left = -1;
-                            }
-                            else if (board[index_of_exit].right == board[SI].index)
-                            { //sever right link
-                                board[index_of_exit].right = -1;
-                            }
-                            if (board[index_of_exit].index == board[SI].left)
-                            { //sever left link
-                                board[SI].left = -1;
-                            }
-                            else if (board[index_of_exit].index == board[SI].right)
-                            { //sever right link
-                                board[SI].right = -1;
-                            }
-                        }
-                    }
-                    else if (board[index_of_exit].right >= 0)
-                    {
-                        index_of_exit = board[index_of_exit].left;
-                        if (has_valid_path(&board[index_of_exit], &board[SI]))
-                        {   // sever this link
-                            done = true;
-                            if (board[index_of_exit].left == board[SI].index)
-                            { //sever left link
-                                board[index_of_exit].left = -1;
-                            }
-                            else if (board[index_of_exit].right == board[SI].index)
-                            { //sever right link
-                                board[index_of_exit].right = -1;
-                            }
-                            if (board[index_of_exit].index == board[SI].left)
-                            { //sever left link
-                                board[SI].left = -1;
-                            }
-                            else if (board[index_of_exit].index == board[SI].right)
-                            { //sever right link
-                                board[SI].right = -1;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        done = true;
-                    }
-                }
-                iter++;
             }
         }
         // Example: 0 1 are the indices of the nodes you wish to sever the link between
         //printf("0 1\n");
-    }while (0);
+    }
 
     free(board);
     free(exit_nodes);
